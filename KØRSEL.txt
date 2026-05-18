@@ -1,0 +1,22 @@
+==============================
+  SHEEP ESCAPE — Kom i gang
+==============================
+
+KRAV: Java JDK 17 eller nyere (tjek med: java -version)
+
+--- Spil ---
+
+  cd SheepEscape
+  javac -encoding UTF-8 -d bin src/*.java
+  java -cp bin Game
+
+--- Kør tests ---
+
+  javac -encoding UTF-8 -d bin -cp "lib/junit-platform-console-standalone-1.10.2.jar" src/*.java tests/*.java
+  java -jar lib/junit-platform-console-standalone-1.10.2.jar -cp bin --scan-classpath
+
+--- Kontroller i spillet ---
+
+  w/a/s/d  = bevæg dig (nord/vest/syd/øst)
+  1-9      = brug item fra inventory
+  q        = afslut
