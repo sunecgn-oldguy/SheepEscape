@@ -24,9 +24,10 @@ public abstract class Entity {
     // Protected = synlig for subklasser, men ikke udefra.
     // Disse felter er fælles for ALLE entity-typer.
     protected Position position;   // Hvor på brættet entity'en befinder sig
-    protected char symbol;         // Det tegn der vises i terminalen (f.eks. '#', '@', 'D')
-    protected Color fgColor;       // Forgrundsfarve (tekstfarve)
-    protected Color bgColor;       // Baggrundsfarve
+    protected char symbol;         // Tegn brugt i level-filer og intern logik (f.eks. '#', '@', 'D')
+    protected String sprite;       // 2-kolonne visuel repræsentation (emoji eller 2 tegn, f.eks. "🐑", "██")
+    protected Color fgColor;       // Forgrundsfarve (virker på ASCII-sprites, emojis har egne farver)
+    protected Color bgColor;       // Baggrundsfarve (virker på alt — vises bag sprite)
     protected boolean solid;       // Blokerer bevægelse? (true = man kan IKKE gå igennem)
     protected boolean visible;     // Synlig på canvas? (kan sættes til false for skjulte ting)
 
@@ -41,6 +42,9 @@ public abstract class Entity {
     public Entity(Position position, char symbol, Color fgColor, Color bgColor, boolean solid) {
         this.position = position;
         this.symbol = symbol;
+        // Default sprite: symbolet + mellemrum (2 kolonner bred).
+        // Subklasser overskriver dette med emojis i deres constructor.
+        this.sprite = symbol + " ";
         this.fgColor = fgColor;
         this.bgColor = bgColor;
         this.solid = solid;
@@ -55,7 +59,7 @@ public abstract class Entity {
      */
     public void renderOn(Canvas canvas) {
         if (visible) {
-            canvas.set(position.getX(), position.getY(), symbol, fgColor, bgColor);
+            canvas.set(position.getX(), position.getY(), sprite, fgColor, bgColor);
         }
     }
 
@@ -106,5 +110,9 @@ public abstract class Entity {
 
     public char getSymbol() {
         return symbol;
+    }
+
+    public String getSprite() {
+        return sprite;
     }
 }

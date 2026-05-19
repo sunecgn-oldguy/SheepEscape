@@ -1,3 +1,4 @@
+import java.io.PrintStream;
 import java.util.List;
 import java.util.Scanner;
 
@@ -286,8 +287,8 @@ public class Game {
     /** Vis symbolforklaring og kontroller under brættet. */
     private void printControls() {
         System.out.println();
-        System.out.println("Symboler: @ = dig  # = mur  | = hegn  ~ = el-hegn  w = vand  > = udgang  * = frihed");
-        System.out.println("          F = farmer  D = hund  h = hø  b = bombe  t = godbid  ! = alarm  . = fælde?");
+        System.out.println("Symboler: 🐑= dig  🧱= mur  🪵= hegn  🔥= el-hegn  💧= vand  🚪= udgang  ⭐= frihed");
+        System.out.println("          👨= farmer  🐕= hund  🌾= hø  💣= bombe  🍖= godbid  🚨= alarm");
         System.out.println("Kontroller: w/a/s/d = bevæg | 1-9 = brug item | q = afslut");
     }
 
@@ -315,7 +316,15 @@ public class Game {
     }
 
     /** Main — entry point for hele programmet. */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        // Sæt konsollen til UTF-8 så emojis vises korrekt i Windows Terminal.
+        // Uden dette vil Java bruge systemets default-encoding (ofte CP1252),
+        // som ikke kan håndtere emoji-tegn (de vises som '?').
+        if (System.getProperty("os.name").contains("Windows")) {
+            new ProcessBuilder("cmd", "/c", "chcp 65001").inheritIO().start().waitFor();
+        }
+        System.setOut(new PrintStream(System.out, true, "UTF-8"));
+
         Game game = new Game();
         game.play();
     }

@@ -25,6 +25,7 @@ public class Sheepdog extends Entity {
 
     public Sheepdog(Position position) {
         super(position, 'D', Color.BROWN, Color.DARK_GREEN, true);
+        this.sprite = "🐕";
     }
 
     /**

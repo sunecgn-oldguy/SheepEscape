@@ -20,6 +20,7 @@ public class ElectricFence extends Entity {
 
     public ElectricFence(Position position) {
         super(position, '~', Color.ORANGE, Color.DARK_GREEN, false);
+        this.sprite = "🔥";
         this.interactions = 3;
     }
 

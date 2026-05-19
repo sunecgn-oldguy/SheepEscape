@@ -24,6 +24,7 @@ public class TreatItem extends Entity {
 
     public TreatItem(Position position) {
         super(position, 't', Color.BROWN, Color.DARK_GREEN, false);
+        this.sprite = "🍖";
         this.thrown = false;
     }
 

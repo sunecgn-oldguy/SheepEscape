@@ -25,6 +25,7 @@ public class BombItem extends Entity {
 
     public BombItem(Position position) {
         super(position, 'b', Color.RED, Color.DARK_GREEN, false);
+        this.sprite = "💣";
         this.timer = 3;
         this.placed = false;
     }
@@ -53,6 +54,7 @@ public class BombItem extends Entity {
         this.placed = true;
         this.visible = true;
         this.symbol = 'B';           // Skift symbol så man kan se den er aktiv
+        this.sprite = "💥";          // Eksplosions-emoji for aktiv bombe
         this.fgColor = Color.ORANGE; // Orange = advarsel!
         this.timer = 3;
         dungeon.addEntity(this);     // Tilføj tilbage til brættet

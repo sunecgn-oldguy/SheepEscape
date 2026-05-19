@@ -27,6 +27,7 @@ public class Farmer extends Entity {
 
     public Farmer(Position position) {
         super(position, 'F', Color.RED, Color.DARK_GREEN, true);
+        this.sprite = "👨";
         // Default rute = bare startpositionen (farmeren står stille)
         this.route = new ArrayList<>();
         this.route.add(new Position(position.getX(), position.getY()));

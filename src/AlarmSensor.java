@@ -26,6 +26,7 @@ public class AlarmSensor extends Entity {
     /** Constructor med specifik retning. */
     public AlarmSensor(Position position, Direction facing) {
         super(position, '!', Color.PURPLE, Color.DARK_GREEN, false);
+        this.sprite = "🚨";
         this.facing = facing;
         this.active = true;
     }
@@ -68,6 +69,7 @@ public class AlarmSensor extends Entity {
                 dungeon.beep();
                 active = false;          // Éngangsbrug — deaktivér
                 symbol = '.';            // Skift udseende til "brugt"
+                sprite = "  ";           // Usynlig — ser ud som gulv
                 fgColor = Color.LIGHT_GRAY;
                 dungeon.addMessage("ALARM! Sensoren udsender et stød! -" + DAMAGE + " HP");
                 break;

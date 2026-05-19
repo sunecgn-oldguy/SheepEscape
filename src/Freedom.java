@@ -12,6 +12,7 @@ public class Freedom extends Entity {
 
     public Freedom(Position position) {
         super(position, '*', Color.YELLOW, Color.GREEN, false);
+        this.sprite = "⭐";
     }
 
     /** Spilleren nåede friheden — spillet er vundet! */

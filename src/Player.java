@@ -30,6 +30,7 @@ public class Player extends Entity {
         // super() kalder Entity's constructor:
         //   symbol='@', hvid forgrund, grøn baggrund, ikke solid
         super(position, '@', Color.WHITE, Color.DARK_GREEN, false);
+        this.sprite = "🐑";
         this.health = 100;
         this.maxHealth = 100;
         this.inventory = new ArrayList<>();

@@ -13,5 +13,6 @@ public class Fence extends Entity {
 
     public Fence(Position position) {
         super(position, '|', Color.BROWN, Color.DARK_GREEN, true);
+        this.sprite = "🪵";
     }
 }

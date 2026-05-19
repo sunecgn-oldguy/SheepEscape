@@ -12,6 +12,7 @@ public class Gate extends Entity {
 
     public Gate(Position position) {
         super(position, '>', Color.GREEN, Color.DARK_GREEN, false);
+        this.sprite = "🚪";
     }
 
     /** Spilleren nåede udgangen — marker level som gennemført. */

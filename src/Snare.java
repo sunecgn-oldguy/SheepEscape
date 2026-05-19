@@ -22,6 +22,7 @@ public class Snare extends Entity {
     public Snare(Position position) {
         // Starter med '.' og grøn farve — ser IDENTISK ud med Floor!
         super(position, '.', Color.DARK_GREEN, Color.DARK_GREEN, false);
+        this.sprite = "  ";  // Skjult — identisk med Floor (to mellemrum, grøn bg)
         this.triggered = false;
     }
 
@@ -37,6 +38,7 @@ public class Snare extends Entity {
             dungeon.beep();
             // Skift udseende så man kan se fælden nu
             symbol = 'x';
+            sprite = "💀";
             fgColor = Color.RED;
             dungeon.addMessage("Du trådte i en snare! -" + DAMAGE + " HP");
         }

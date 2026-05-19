@@ -16,5 +16,6 @@ public class StoneWall extends Entity {
     public StoneWall(Position position) {
         // solid = true: spilleren kan ikke gå igennem
         super(position, '#', Color.LIGHT_GRAY, Color.DARK_GRAY, true);
+        this.sprite = "🧱";
     }
 }

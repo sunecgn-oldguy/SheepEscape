@@ -15,5 +15,6 @@ public class Floor extends Entity {
 
     public Floor(Position position) {
         super(position, '.', Color.DARK_GREEN, Color.DARK_GREEN, false);
+        this.sprite = "  ";  // To mellemrum — viser kun grøn baggrund
     }
 }

@@ -14,6 +14,7 @@ public class WaterTrough extends Entity {
 
     public WaterTrough(Position position) {
         super(position, 'w', Color.CYAN, Color.BLUE, false);
+        this.sprite = "💧";
     }
 
     /** Hver gang spilleren træder på vandtruget, healer de 15 HP. */

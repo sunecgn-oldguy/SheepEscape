@@ -19,6 +19,7 @@ public class HayItem extends Entity {
 
     public HayItem(Position position) {
         super(position, 'h', Color.YELLOW, Color.DARK_GREEN, false);
+        this.sprite = "🌾";
     }
 
     /**
