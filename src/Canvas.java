@@ -88,6 +88,10 @@ public class Canvas {
     public void show() {
         StringBuilder sb = new StringBuilder();
 
+        // Tilføj en tom linje øverst så brættet ikke klæber til terminalens kant.
+        // Dette forhindrer at skærmen "hopper" ved visse inputs.
+        sb.append('\n');
+
         // Gennemløb række for række (y = rækker, x = kolonner)
         for (int y = 0; y < rows; y++) {
             for (int x = 0; x < cols; x++) {
