@@ -1,6 +1,7 @@
 import java.io.PrintStream;
 import java.util.List;
-import java.util.Scanner;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
 
 /**
  * Game — Hovedklassen med main() og spil-loopet.
@@ -11,8 +12,12 @@ import java.util.Scanner;
  *   3. Spil-loop: vis bræt → læs input → bevæg → enemy AI → tjek status
  *   4. Håndter level-skift, game over og sejr
  *
+ * Bruger JLine biblioteket til at læse rå tastetryk (piletaster, mellemrum,
+ * tal-taster) uden at spilleren behøver trykke Enter efter hvert træk.
+ * Dette giver en langt mere responsiv spiloplevelse.
+ *
  * Game klassen er ansvarlig for ALT der har med UI at gøre:
- *   - Konsol-input (Scanner)
+ *   - Konsol-input (JLine Terminal)
  *   - Udskrift af HP-bar, inventory, beskeder
  *   - Clear screen
  *
@@ -26,19 +31,31 @@ import java.util.Scanner;
  */
 public class Game {
 
+    // Specielle tastekoder for piletaster (negative tal så de ikke
+    // kolliderer med ASCII-koder som alle er positive).
+    private static final int KEY_UP = -1;
+    private static final int KEY_DOWN = -2;
+    private static final int KEY_RIGHT = -3;
+    private static final int KEY_LEFT = -4;
+
     private Dungeon dungeon;       // Det aktuelle level
     private int currentLevel;      // Hvilket level vi er på (1-4)
     private int totalLevels;       // Totalt antal levels
     private boolean playing;       // Er spillet i gang?
-    private Scanner scanner;       // Til at læse bruger-input
+    private Terminal terminal;     // JLine terminal til rå tastetryk
     private String[] levelFiles;   // Stier til level-filerne
 
-    /** Constructor — sæt default-værdier og level-stier. */
-    public Game() {
+    /** Constructor — sæt default-værdier, level-stier og JLine terminal. */
+    public Game() throws Exception {
         this.currentLevel = 1;
         this.totalLevels = 4;
         this.playing = true;
-        this.scanner = new Scanner(System.in);
+        // JLine terminal: giver adgang til rå tastetryk uden Enter.
+        // system(true) = brug den rigtige system-terminal (ikke en dummy).
+        this.terminal = TerminalBuilder.builder()
+            .system(true)
+            .build();
+        terminal.enterRawMode();  // Slå linje-buffering fra
         this.levelFiles = new String[] {
             "levels/level1.txt",
             "levels/level2.txt",
@@ -48,12 +65,76 @@ public class Game {
     }
 
     /**
+     * readKey() — læs ét tastetryk fra terminalen (blokerer indtil tast trykkes).
+     *
+     * Piletaster sender en escape-sekvens (3 bytes):
+     *   VT100 (Windows Terminal): ESC(27) + [(91) + A/B/C/D
+     *   Windows Console:          224(0xE0) + H/P/M/K
+     *
+     * Returnerer: positive int = ASCII-tegn, negative int = piletast-konstant.
+     */
+    private int readKey() throws Exception {
+        int ch = terminal.reader().read();
+
+        if (ch == 27) {
+            // ESC modtaget — tjek om det er en piletast-sekvens (VT100).
+            // peek(100) venter op til 100ms for at se om der kommer mere data.
+            // Hvis timeout (-2): det var bare ESC-tasten alene.
+            int next = terminal.reader().peek(100);
+            if (next == -2) return 27;  // Bare ESC
+
+            next = terminal.reader().read();
+            if (next == '[' || next == 'O') {
+                int code = terminal.reader().read();
+                switch (code) {
+                    case 'A': return KEY_UP;
+                    case 'B': return KEY_DOWN;
+                    case 'C': return KEY_RIGHT;
+                    case 'D': return KEY_LEFT;
+                }
+            }
+            return 27;  // Ukendt escape-sekvens
+        } else if (ch == 224 || ch == 0) {
+            // Windows Console piletaster (ældre cmd.exe format).
+            int code = terminal.reader().read();
+            switch (code) {
+                case 72: return KEY_UP;     // H = op
+                case 80: return KEY_DOWN;   // P = ned
+                case 77: return KEY_RIGHT;  // M = højre
+                case 75: return KEY_LEFT;   // K = venstre
+            }
+        }
+
+        return ch;  // Almindeligt tegn (bogstav, tal, mellemrum osv.)
+    }
+
+    /**
+     * keyToDirection() — konverter et tastetryk til en bevægeretning.
+     * Understøtter både piletaster og w/a/s/d.
+     * Returnerer null hvis tasten ikke er en retnings-tast.
+     */
+    private Direction keyToDirection(int key) {
+        switch (key) {
+            case KEY_UP:    case 'w': case 'W': return Direction.NORTH;
+            case KEY_DOWN:  case 's': case 'S': return Direction.SOUTH;
+            case KEY_RIGHT: case 'd': case 'D': return Direction.EAST;
+            case KEY_LEFT:  case 'a': case 'A': return Direction.WEST;
+            default: return null;
+        }
+    }
+
+    /** Vent på et vilkårligt tastetryk. */
+    private void waitForKey() {
+        try { readKey(); } catch (Exception e) {}
+    }
+
+    /**
      * play() — hovedloopet. Kører indtil spilleren vinder, taber eller quitter.
      *
      * Strukturen er en klassisk game loop:
      *   while (playing) {
      *       render();    // Vis brættet
-     *       input();     // Læs spillerens handling
+     *       input();     // Læs spillerens handling (ét tastetryk)
      *       update();    // Opdater verden (bevægelse, AI)
      *       check();     // Tjek om spillet er slut
      *   }
@@ -64,12 +145,13 @@ public class Game {
         System.out.println("Et får der flygter fra folden!");
         System.out.println();
         System.out.println("Kontroller:");
-        System.out.println("  w/a/s/d  - Bevæg dig (nord/vest/syd/øst)");
-        System.out.println("  1-9      - Brug item fra inventory");
-        System.out.println("  q        - Afslut spillet");
+        System.out.println("  Piletaster / w/a/s/d  - Bevæg dig");
+        System.out.println("  1-9                   - Brug item fra inventory");
+        System.out.println("  q                     - Afslut spillet");
         System.out.println();
-        System.out.println("Tryk Enter for at starte...");
-        scanner.nextLine();
+        System.out.println("Tryk en tast for at starte...");
+        System.out.flush();
+        waitForKey();
 
         // Load det første level
         loadLevel(currentLevel);
@@ -83,41 +165,37 @@ public class Game {
             printMessages();         // Vis beskedlog
             printInventory();        // Vis inventory
             printControls();         // Vis kontroller
+            System.out.flush();
 
             // --- INPUT ---
-            System.out.print("\n> ");
-            String input = scanner.nextLine().trim().toLowerCase();
-
-            if (input.isEmpty()) continue;  // Tom input — gør ingenting
+            // Læs ét tastetryk (blokerer her indtil spilleren trykker noget)
+            int key;
+            try {
+                key = readKey();
+            } catch (Exception e) {
+                continue;
+            }
 
             // Fortolk input: bevægelse, item-brug eller quit
-            Direction dir = null;
-            switch (input) {
-                case "w": dir = Direction.NORTH; break;
-                case "s": dir = Direction.SOUTH; break;
-                case "a": dir = Direction.WEST; break;
-                case "d": dir = Direction.EAST; break;
-                case "q":
-                    playing = false;
-                    System.out.println("Spillet afsluttet.");
-                    continue;
-                default:
-                    // Tjek om det er et item-nummer (1-9)
-                    if (input.length() == 1 && input.charAt(0) >= '1' && input.charAt(0) <= '9') {
-                        int itemIndex = input.charAt(0) - '1';  // '1' → 0, '2' → 1, osv.
-                        useItem(itemIndex);
-                        dungeon.tick();  // Fjender reagerer også når man bruger items
-                    } else {
-                        System.out.println("Ugyldigt input! Brug w/a/s/d, 1-9 eller q.");
-                    }
-                    continue;  // Spring bevægelse over — vi brugte et item
-            }
+            Direction dir = keyToDirection(key);
 
-            // --- UPDATE ---
             if (dir != null) {
+                // --- UPDATE ---
                 dungeon.move(dir);   // Flyt spilleren
+                dungeon.tick();      // Enemy AI og timers
+            } else if (key == 'q' || key == 'Q') {
+                playing = false;
+                System.out.println("Spillet afsluttet.");
+                System.out.flush();
+                continue;
+            } else if (key >= '1' && key <= '9') {
+                // Item-brug
+                int itemIndex = key - '1';  // '1' → 0, '2' → 1, osv.
+                useItem(itemIndex);
+                dungeon.tick();  // Fjender reagerer også når man bruger items
+            } else {
+                continue;  // Ukendt tast — ignorer
             }
-            dungeon.tick();          // Enemy AI og timers
 
             // --- CHECK ---
             if (dungeon.isGameWon()) {
@@ -128,6 +206,7 @@ public class Game {
                 System.out.print('\007');
                 System.out.println("*** TILLYKKE! Du slap fri! ***");
                 System.out.println("Fåret fandt friheden!");
+                System.out.flush();
                 playing = false;
 
             } else if (dungeon.isLevelComplete()) {
@@ -135,7 +214,8 @@ public class Game {
                 if (currentLevel < totalLevels) {
                     currentLevel++;
                     System.out.println("Level gennemført! Næste level...");
-                    pause();
+                    System.out.flush();
+                    waitForKey();
                     loadLevel(currentLevel);
                 } else {
                     // Sidste level gennemført
@@ -144,6 +224,7 @@ public class Game {
                     System.out.println();
                     System.out.print('\007');
                     System.out.println("*** TILLYKKE! Du klarede alle levels! ***");
+                    System.out.flush();
                     playing = false;
                 }
 
@@ -156,23 +237,27 @@ public class Game {
                 System.out.println("*** GAME OVER ***");
                 System.out.println("Fåret blev fanget...");
                 System.out.println();
-                // Loop indtil spilleren svarer j eller n
+                System.out.println("Prøv igen? (j/n)");
+                System.out.flush();
+                // Loop indtil spilleren trykker j eller n
                 while (true) {
-                    System.out.println("Prøv igen? (j/n)");
-                    String retry = scanner.nextLine().trim().toLowerCase();
-                    if (retry.equals("j")) {
-                        loadLevel(currentLevel);  // Genstart level
-                        break;
-                    } else if (retry.equals("n")) {
-                        playing = false;
-                        break;
-                    }
-                    System.out.println("Skriv 'j' for ja eller 'n' for nej.");
+                    try {
+                        int retry = readKey();
+                        if (retry == 'j' || retry == 'J') {
+                            loadLevel(currentLevel);  // Genstart level
+                            break;
+                        } else if (retry == 'n' || retry == 'N') {
+                            playing = false;
+                            break;
+                        }
+                    } catch (Exception e) {}
                 }
             }
         }
 
-        scanner.close();
+        // Luk JLine terminal og gendan normal terminal-tilstand.
+        // Uden dette ville terminalen forblive i raw mode efter spillet.
+        try { terminal.close(); } catch (Exception e) {}
     }
 
     /**
@@ -186,6 +271,7 @@ public class Game {
             dungeon.addMessage("Level " + level + " - Start!");
         } catch (Exception e) {
             System.out.println("Kunne ikke loade level " + level + ": " + e.getMessage());
+            System.out.flush();
             playing = false;
         }
     }
@@ -195,7 +281,7 @@ public class Game {
      * Forskellige items har forskellige use()-metoder:
      *   - HayItem: healer spilleren
      *   - BombItem: placerer en bombe
-     *   - TreatItem: spørger om retning og kaster godbid
+     *   - TreatItem: spørger om retning (via piletast) og kaster godbid
      *
      * Vi bruger instanceof til at finde den rigtige type,
      * og caster derefter for at kalde den specifikke use()-metode.
@@ -217,16 +303,15 @@ public class Game {
         } else if (item instanceof BombItem) {
             ((BombItem) item).use(player, dungeon);
         } else if (item instanceof TreatItem) {
-            // Treat kræver en retning — spørg spilleren
-            System.out.println("Kast retning? (w=nord, s=syd, a=vest, d=øst)");
-            String dirInput = scanner.nextLine().trim().toLowerCase();
-            Direction throwDir = Direction.NORTH;  // Default hvis ugyldigt input
-            switch (dirInput) {
-                case "w": throwDir = Direction.NORTH; break;
-                case "s": throwDir = Direction.SOUTH; break;
-                case "a": throwDir = Direction.WEST; break;
-                case "d": throwDir = Direction.EAST; break;
-            }
+            // Treat kræver en retning — læs en piletast fra spilleren
+            System.out.println("Kast retning? (piletast eller w/a/s/d)");
+            System.out.flush();
+            Direction throwDir = Direction.NORTH;  // Default
+            try {
+                int dirKey = readKey();
+                Direction chosen = keyToDirection(dirKey);
+                if (chosen != null) throwDir = chosen;
+            } catch (Exception e) {}
             ((TreatItem) item).use(player, dungeon, throwDir);
         }
     }
@@ -287,41 +372,27 @@ public class Game {
     /** Vis symbolforklaring og kontroller under brættet. */
     private void printControls() {
         System.out.println();
-        System.out.println("Symboler: 🐑= dig  🧱= mur  🪵= hegn  🔥= el-hegn  💧= vand  🚪= udgang  ⭐= frihed");
-        System.out.println("          👨= farmer  🐕= hund  🌾= hø  💣= bombe  🍖= godbid  🚨= alarm");
-        System.out.println("Kontroller: w/a/s/d = bevæg | 1-9 = brug item | q = afslut");
-    }
-
-    /** Pause — vent på at spilleren trykker Enter. */
-    private void pause() {
-        System.out.println("Tryk Enter for at fortsætte...");
-        scanner.nextLine();
+        System.out.println("Symboler: 🐑= dig  🧱= mur  🚧= hegn  🔥= el-hegn  💧= vand  🏁= udgang  ⭐= frihed");
+        System.out.println("          👨= farmer  🐕= hund  💛= hø  💣= bombe  🍖= godbid  🚨= alarm");
+        System.out.println("Kontroller: piletaster/wasd = bevæg | 1-9 = brug item | q = afslut");
     }
 
     /**
-     * clearConsole() — ryd terminalen.
-     * Bruger OS-specifik kommando (cls på Windows, clear på Linux/Mac).
-     * Hvis det fejler, printer vi bare 50 tomme linjer som fallback.
+     * clearConsole() — ryd terminalen med ANSI escape-koder.
+     * \033[H  = flyt cursor til øverste venstre hjørne
+     * \033[2J = ryd hele skærmen
      */
     private void clearConsole() {
-        try {
-            if (System.getProperty("os.name").contains("Windows")) {
-                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
-            } else {
-                Runtime.getRuntime().exec("clear");
-            }
-        } catch (Exception ex) {
-            for (int i = 0; i < 50; i++) System.out.println();
-        }
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
     }
 
     /** Main — entry point for hele programmet. */
     public static void main(String[] args) throws Exception {
         // Sæt konsollen til UTF-8 så emojis vises korrekt i Windows Terminal.
-        // Uden dette vil Java bruge systemets default-encoding (ofte CP1252),
-        // som ikke kan håndtere emoji-tegn (de vises som '?').
         if (System.getProperty("os.name").contains("Windows")) {
-            new ProcessBuilder("cmd", "/c", "chcp 65001").inheritIO().start().waitFor();
+            new ProcessBuilder("cmd", "/c", "chcp 65001")
+                .inheritIO().start().waitFor();
         }
         System.setOut(new PrintStream(System.out, true, "UTF-8"));
 

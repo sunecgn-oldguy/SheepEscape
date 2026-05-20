@@ -90,7 +90,7 @@ public class Canvas {
 
         // Tilføj en tom linje øverst så brættet ikke klæber til terminalens kant.
         // Dette forhindrer at skærmen "hopper" ved visse inputs.
-        sb.append('\n');
+        sb.append("\r\n");
 
         // Gennemløb række for række (y = rækker, x = kolonner)
         for (int y = 0; y < rows; y++) {
@@ -103,7 +103,7 @@ public class Canvas {
             }
             // Nulstil farver og gå til næste linje
             sb.append(Color.RESET);
-            sb.append('\n');
+            sb.append("\r\n");
         }
         sb.append(Color.RESET);  // Ekstra reset til sidst for en sikkerheds skyld
 
